@@ -72,8 +72,23 @@ function renderMarkdownContent(text, opts = {}) {
         );
     }
 
-    // 5. Restore math blocks
+    // 5. Restore math blocks (both in the HTML and inside extracted custom blocks).
+    // Custom blocks (chart captions, figure captions, etc.) were pulled out before
+    // markdown parsing so their captions still hold MATH_BLOCK_N placeholders.
     html = restoreMathBlocks(html, mathBlocks);
+    if (blocks && mathBlocks.length) {
+        const restoreInValue = (v) => {
+            if (typeof v === 'string') return restoreMathBlocks(v, mathBlocks);
+            if (Array.isArray(v)) return v.map(restoreInValue);
+            if (v && typeof v === 'object') {
+                const out = {};
+                for (const k in v) out[k] = restoreInValue(v[k]);
+                return out;
+            }
+            return v;
+        };
+        for (const key in blocks) blocks[key] = restoreInValue(blocks[key]);
+    }
 
     // 6. Render custom blocks
     if (blocks && window.customBlocks) {

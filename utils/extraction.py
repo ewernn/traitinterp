@@ -231,6 +231,13 @@ def parse_numbered_blocks(response: str, expected_n: int, label: str = "story") 
     restarts the list), case-insensitive bracket spacing, trailing colon,
     markdown bold wrapping.
 
+    Implicit-first-block recovery: when the model's first emitted marker is
+    `[{label} 2]` (it skipped writing `[{label} 1]` because the template's
+    Format example demonstrates the first block without a header — true for
+    the paper's neutral_dialogue.txt and two_speaker_dialogue.txt), the text
+    BEFORE the first marker IS the first block. Promotes it. Triggered when
+    min matched index >= 2.
+
     Returns up to `expected_n` blocks in sorted-index order. Raises TypeError
     if response isn't a string.
     """
@@ -249,8 +256,20 @@ def parse_numbered_blocks(response: str, expected_n: int, label: str = "story") 
         if idx not in first_by_index:
             first_by_index[idx] = (m.start(), m.end())
 
+    sorted_indices = sorted(first_by_index.keys())
     blocks = []
-    for idx in sorted(first_by_index.keys()):
+
+    # Implicit-first recovery: model's earliest marker is >= 2, so the text
+    # before that marker was the first block (per template's Format example).
+    if sorted_indices and sorted_indices[0] >= 2:
+        first_marker_pos = first_by_index[sorted_indices[0]][0]
+        implicit_first = response[:first_marker_pos].strip()
+        if implicit_first:
+            blocks.append(implicit_first)
+            if len(blocks) >= expected_n:
+                return blocks
+
+    for idx in sorted_indices:
         match_start, block_start = first_by_index[idx]
         next_positions = [p for p in all_positions if p > match_start]
         block_end = next_positions[0] if next_positions else len(response)
@@ -396,12 +415,17 @@ def _generate_stories_batched_and_write(
     topics, output_path, model, tokenizer, use_chat_template,
     max_new_tokens, temperature, seed,
     batched_template, template_kwargs, stories_per_batch,
+    block_label: str = "story",
 ):
-    """Paper-faithful batched generation: one call per topic, N stories per call.
+    """Paper-faithful batched generation: one call per topic, N blocks per call.
 
     Sends `batched_template.format(n_stories=N, topic=T, **template_kwargs)` as
-    the user prompt for each topic, parses the response via `parse_story_blocks`,
-    emits one record per parsed story.
+    the user prompt for each topic, parses the response via
+    `parse_numbered_blocks(label=block_label)`, emits one record per parsed block.
+
+    `block_label` defaults to "story" (matches `[story N]` delimiters used by
+    the stage-1 story template). Set to "dialogue" for templates that ask the
+    model for `[dialogue N]` blocks (stage-3 neutral, stage-6 two-speaker, etc.).
 
     Contract:
       - `batched_template` must reference `{n_stories}` and `{topic}` at minimum;
@@ -459,7 +483,9 @@ def _generate_stories_batched_and_write(
             seed=topic_seed,
         )[0]
 
-        stories = parse_story_blocks(response, expected_n=stories_per_batch)
+        stories = parse_numbered_blocks(
+            response, expected_n=stories_per_batch, label=block_label,
+        )
 
         if len(stories) < stories_per_batch:
             under_produced_topics.append((topic_idx, len(stories)))
@@ -565,6 +591,13 @@ def _generate_training_responses_full(scenarios, responses_path, backend, config
     # consistently with the lightweight prompt_template code path.
     emotion = resolve_emotion_surface(trait)
 
+    # Block label tells the parser whether to look for [story N] or
+    # [dialogue N] delimiters in the model's batched response. Default
+    # "story" matches the stage-1 story template (paper Appendix says
+    # [story 1], [story 2], etc.). Override to "dialogue" for the neutral
+    # and two-speaker templates which use [dialogue N] format.
+    block_label = cfg.get('block_label', 'story')
+
     # Full mode is single-polarity by design (paper uses one contrasting
     # corpus; MeanDiffMethod handles zero-centered negative elsewhere).
     # Only 'positive' label is processed.
@@ -584,6 +617,7 @@ def _generate_training_responses_full(scenarios, responses_path, backend, config
             max_new_tokens=max_new_tokens,
             temperature=config.temperature,
             seed=config.seed,
+            block_label=block_label,
             batched_template=template,
             template_kwargs={'emotion': emotion},
             stories_per_batch=n_per_batch,

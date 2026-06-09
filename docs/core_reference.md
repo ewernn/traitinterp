@@ -184,13 +184,41 @@ with PerPositionSteeringHook(model, vector, "model.layers.16", coefficient=1.5, 
     output = model.generate(**inputs)
 ```
 
-**Activation capping** (clamp activations along a direction):
+**Activation capping / cupping** (clamp residual projection along a direction):
+
+Floor mode forces `⟨h, v̂⟩ ≥ effective_tau`. Ceiling mode forces `⟨h, v̂⟩ ≤ effective_tau`. The orthogonal component of `h` is preserved. From Lu et al. 2026.
+
 ```python
-from core import ActivationCappingHook
-# h ← h + max(0, τ - ⟨h,v̂⟩)·v̂
-with ActivationCappingHook(model, vector, "model.layers.16", threshold=0.5):
+from core import ActivationCappingHook, MultiLayerActivationCapping
+from utils.vectors import load_cached_activation_norms
+
+# Cosine mode (default when no mean_activation_norm given).
+# tau is a per-token cosine fraction in [-1, +1].
+with ActivationCappingHook(model, axis, "model.layers.60", tau=0.5):
+    output = model.generate(**inputs)
+
+# Calibrated mode (default when mean_activation_norm is provided).
+# tau is a fraction of the precomputed mean residual norm at this layer.
+# tau=1.0 means "one typical residual norm at L60".
+norms = load_cached_activation_norms("quant-sensitivity/llama-70b-nf4", "residual")
+with ActivationCappingHook(model, axis, "model.layers.60", tau=1.0,
+                           mean_activation_norm=norms[60]):
+    output = model.generate(**inputs)
+
+# Raw mode (interop with externally-provided absolute thresholds, e.g.
+# Lu et al.'s lu-christina/assistant-axis-vectors capping_config.pt).
+with ActivationCappingHook(model, axis, "model.layers.60", tau=16.99,
+                           tau_mode="raw"):
+    output = model.generate(**inputs)
+
+# Multi-layer (one tau and one direction per layer):
+directions = {l: axis[l] for l in range(56, 72)}
+tau_per_layer = {l: 0.5 for l in range(56, 72)}  # 0.5 cosine, all layers
+with MultiLayerActivationCapping(model, directions, tau_per_layer, mode="floor"):
     output = model.generate(**inputs)
 ```
+
+Sign convention: for `axis = default_mean - role_mean` (Lu et al.), positive projection means assistant-mode. Floor with positive tau forces toward assistant (safety cap). Ceiling with negative tau forces toward persona (elicitation).
 
 **Validation:** Hooks fail fast on invalid inputs:
 - `SteeringHook` / `AblationHook`: Reject non-1D vectors

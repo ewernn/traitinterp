@@ -1,0 +1,11 @@
+{
+  "xaxis": "Spearman lift (variant C minus production) by trait, tuning set",
+  "bars": [
+    { "label": "golden_gate_bridge", "value": 0.745 },
+    { "label": "desperate", "value": 0.289 },
+    { "label": "sad", "value": 0.504 },
+    { "label": "sycophancy", "value": 0.489 },
+    { "label": "assistant_axis", "value": 0.406 },
+    { "label": "formality", "value": 0.296 }
+  ]
+}

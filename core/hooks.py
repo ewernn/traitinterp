@@ -8,7 +8,7 @@ SteeringHook: add vectors to layer outputs (residual-shape: [batch, seq, hidden]
 MultiLayerCapture: capture one component across many layers (uses Architecture registry)
 """
 
-from typing import Any, Callable, Dict, List, Sequence, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Sequence, Union
 
 import torch
 
@@ -684,18 +684,68 @@ class ActivationCappingHook(LayerHook):
     """
     Activation capping: ensure projections onto a direction stay within bounds.
 
-    Floor mode (default): h <- h + max(0, tau - <h, v_hat>) * v_hat
-        Pulls up if below tau. Prevents drift away from direction.
+    Floor mode (default): forces `<h, v_hat>` to be at least `effective_tau`.
+    Ceiling mode: forces `<h, v_hat>` to be at most `effective_tau`.
 
-    Ceiling mode: h <- h + min(0, tau - <h, v_hat>) * v_hat
-        Pulls down if above tau. Prevents excess projection onto direction.
+    The hook unit-normalizes `direction` internally, then computes
+    `proj = h @ v_hat` per token, then clamps. The orthogonal component of
+    `h` is preserved. From Lu et al. (2026), "The Assistant Axis."
 
-    From Lu et al. (2026), "The Assistant Axis."
-    Residual-shape only ([batch, seq, hidden]).
+    Residual-shape only ([batch, seq, hidden]). Fires per-token at every
+    sequence position; no response/prompt-token masking.
+
+    tau_mode (what `tau` actually means)
+    ------------------------------------
+    Three modes, picked smartly by default:
+
+      - "cosine" (default when `mean_activation_norm` is NOT given):
+        `tau` is a per-token cosine fraction in [-1, +1]. Internally the hook
+        rescales to raw per-token via `effective_tau_t = tau * ||h_t||`. So
+        `tau = 0.4` means "force this token's projection to be at least 0.4
+        times its own L2 norm." Model-independent and intuitive.
+
+      - "calibrated" (default when `mean_activation_norm` IS given):
+        `tau` is a fraction of a precomputed per-layer mean activation norm.
+        Internally `effective_tau = tau * mean_activation_norm` (a constant
+        per layer, not per token). So `tau = 1.0` means "one typical residual
+        norm at this layer." This matches how steering coefficients are
+        expressed elsewhere in this codebase (see `coefficient_search.py`
+        `base_coef = mean_activation_norm`).
+
+      - "raw" (must be requested explicitly):
+        `tau` is the absolute raw projection value. No rescaling. Use this
+        only when interoperating with externally-provided raw thresholds
+        (e.g., Lu et al.'s `lu-christina/assistant-axis-vectors` capping
+        config.pt, which stores per-layer p25 raw projections).
+
+    Sign convention
+    ---------------
+    For `axis = default_mean - role_mean` (the Lu et al. convention),
+    positive projection means assistant-mode, negative means persona-mode.
+
+      - Floor mode with positive tau forces the residual TOWARD assistant.
+        Used for safety capping: keep the model in assistant mode under
+        jailbreak pressure.
+      - Ceiling mode with negative tau forces the residual TOWARD persona.
+        Used for persona elicitation: force the model into a character.
+
+    If the user supplied `axis = role - default` instead, both directions
+    flip silently. Verify the sign of `axis @ default_activation` before use.
 
     Usage:
-        axis = torch.load('axis.pt')['axis_normed'][24]
-        with ActivationCappingHook(model, axis, "model.layers.24", tau=16.99):
+        # Cosine mode (default, no calibration needed)
+        with ActivationCappingHook(model, axis, "model.layers.60", tau=0.5):
+            output = model.generate(**inputs)
+
+        # Calibrated mode (recommended when you have per-layer norms)
+        norms = load_cached_activation_norms("quant-sensitivity/llama-70b-nf4", "residual")
+        with ActivationCappingHook(model, axis, "model.layers.60", tau=1.0,
+                                   mean_activation_norm=norms[60]):
+            output = model.generate(**inputs)
+
+        # Raw mode (interop with Lu et al. precomputed thresholds)
+        with ActivationCappingHook(model, axis, "model.layers.60",
+                                   tau=16.99, tau_mode="raw"):
             output = model.generate(**inputs)
     """
 
@@ -706,12 +756,33 @@ class ActivationCappingHook(LayerHook):
         path: str,
         tau: float,
         mode: str = "floor",
+        tau_mode: Optional[Literal["cosine", "calibrated", "raw"]] = None,
+        mean_activation_norm: Optional[float] = None,
     ):
         if mode not in ("floor", "ceiling"):
             raise ValueError(f"mode must be 'floor' or 'ceiling', got {mode!r}")
+
+        # Resolve default tau_mode: calibrated if mean_norm provided, else cosine.
+        if tau_mode is None:
+            tau_mode = "calibrated" if mean_activation_norm is not None else "cosine"
+        if tau_mode not in ("cosine", "calibrated", "raw"):
+            raise ValueError(
+                f"tau_mode must be 'cosine', 'calibrated', or 'raw', got {tau_mode!r}"
+            )
+        if tau_mode == "calibrated" and mean_activation_norm is None:
+            raise ValueError(
+                "tau_mode='calibrated' requires `mean_activation_norm` to be provided. "
+                "Pass the precomputed mean residual norm at this layer (e.g. from "
+                "`load_cached_activation_norms(experiment, 'residual')[layer]`)."
+            )
+
         super().__init__(model, path)
         self.tau = float(tau)
         self.mode = mode
+        self.tau_mode = tau_mode
+        self.mean_activation_norm = (
+            float(mean_activation_norm) if mean_activation_norm is not None else None
+        )
 
         param = next(model.parameters())
         direction = torch.as_tensor(direction, dtype=torch.float32, device=param.device)
@@ -732,10 +803,20 @@ class ActivationCappingHook(LayerHook):
 
         proj = out_tensor @ v_hat  # [batch, seq]
 
+        # effective_tau resolves tau_mode to a raw-projection-scale threshold
+        if self.tau_mode == "raw":
+            effective_tau = self.tau
+        elif self.tau_mode == "calibrated":
+            effective_tau = self.tau * self.mean_activation_norm
+        else:  # "cosine"
+            # Per-token rescaling. effective_tau is now a tensor [batch, seq].
+            token_norms = out_tensor.norm(dim=-1)
+            effective_tau = self.tau * token_norms
+
         if self.mode == "floor":
-            delta = torch.clamp(self.tau - proj, min=0)
+            delta = torch.clamp(effective_tau - proj, min=0)
         else:
-            delta = torch.clamp(self.tau - proj, max=0)
+            delta = torch.clamp(effective_tau - proj, max=0)
 
         capped = out_tensor + delta.unsqueeze(-1) * v_hat
 
@@ -750,10 +831,39 @@ class MultiLayerActivationCapping:
     """
     Apply activation capping across multiple layers with per-layer thresholds.
 
+    Each layer needs its own unit-axis direction (typically the assistant axis
+    extracted at that layer) and its own tau value. See `ActivationCappingHook`
+    docstring for tau units (cosine / calibrated / raw) and sign convention.
+
+    The same tau_mode applies to every layer. If `mean_norm_per_layer` is
+    provided, the default mode is "calibrated" and each layer uses its own
+    norm. Otherwise the default is "cosine" (per-token rescaling).
+
+    Tau values can vary per layer because residual norms grow with depth.
+    For the most consistent semantic across layers, use cosine or calibrated
+    mode with the same tau scalar across all layers.
+
     Usage:
-        axis_data = torch.load('axis.pt')
-        tau_per_layer = {24: 16.99, 28: 2.22, 32: 15.19}
-        with MultiLayerActivationCapping(model, axis_data['axis_normed'], tau_per_layer):
+        # Cosine mode (default, no calibration needed)
+        axis = torch.load('axis.pt')  # {layer: 1D tensor}
+        layers = list(range(56, 72))
+        directions = {l: axis[l] for l in layers}
+        tau_per_layer = {l: 0.5 for l in layers}  # 0.5 cosine, all layers
+        with MultiLayerActivationCapping(model, directions, tau_per_layer):
+            output = model.generate(**inputs)
+
+        # Calibrated mode (recommended when per-layer norms are available)
+        from utils.vectors import load_cached_activation_norms
+        norms = load_cached_activation_norms("quant-sensitivity/llama-70b-nf4", "residual")
+        with MultiLayerActivationCapping(
+            model, directions, tau_per_layer={l: 1.0 for l in layers},
+            mean_norm_per_layer={l: norms[l] for l in layers},
+        ):
+            output = model.generate(**inputs)
+
+        # Raw mode (interop with Lu et al.'s precomputed thresholds)
+        raw_taus = {56: 21.98, 57: 22.45, ..., 71: 31.59}
+        with MultiLayerActivationCapping(model, directions, raw_taus, tau_mode="raw"):
             output = model.generate(**inputs)
     """
 
@@ -764,15 +874,32 @@ class MultiLayerActivationCapping:
         tau_per_layer: dict,  # {layer: tau_value}
         component: str = "residual",
         mode: str = "floor",
+        tau_mode: Optional[Literal["cosine", "calibrated", "raw"]] = None,
+        mean_norm_per_layer: Optional[Dict[int, float]] = None,
     ):
+        # Resolve default tau_mode: calibrated if norms provided, else cosine.
+        if tau_mode is None:
+            tau_mode = "calibrated" if mean_norm_per_layer is not None else "cosine"
+        if tau_mode == "calibrated" and mean_norm_per_layer is None:
+            raise ValueError(
+                "tau_mode='calibrated' requires `mean_norm_per_layer` to be provided."
+            )
+
         arch = get_architecture(model)
         self._hooks = []
         for layer, tau in tau_per_layer.items():
             vec = directions[layer]
+            layer_mean_norm = (
+                mean_norm_per_layer[layer]
+                if mean_norm_per_layer is not None and layer in mean_norm_per_layer
+                else None
+            )
             self._hooks.append(
                 ActivationCappingHook(
                     model, vec, arch.path(component, layer, model=model), tau,
                     mode=mode,
+                    tau_mode=tau_mode,
+                    mean_activation_norm=layer_mean_norm,
                 )
             )
 

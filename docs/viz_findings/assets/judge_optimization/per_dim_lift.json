@@ -1,0 +1,12 @@
+{
+  "xaxis": "Spearman vs golden dim, variant C (tuning n=110)",
+  "bars": [
+    { "label": "substantiveness", "value": 0.912 },
+    { "label": "answer_completeness", "value": 0.906 },
+    { "label": "overall_coherence", "value": 0.890 },
+    { "label": "naturalness", "value": 0.845 },
+    { "label": "repetition", "value": 0.730 },
+    { "label": "internal_consistency", "value": 0.616 },
+    { "label": "grammaticality", "value": 0.415 }
+  ]
+}

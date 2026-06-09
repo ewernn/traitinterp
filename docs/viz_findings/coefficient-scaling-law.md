@@ -14,13 +14,15 @@ thumbnail:
     y_max: 90
 ---
 
+## Summary
+
+Steered responses become incoherent when steering magnitude ~= activation magnitude ($\alpha$ ~= 1.0).
+
 ## Definition
 
-Per layer $i$, for a unit-norm trait vector $v$ steered with coefficient $c$:
+Let our trait vector $v$ be unit norm (steering direction) at layer $i$. The unit vector is multiplied by coefficient $c$ and added to the residual stream $h_i$, $h_i \mathrel{+}= c \cdot v$. Then, the perturbation ratio $\alpha$ is:
 
-$$\alpha_i = \frac{|c|}{\|h_i\|}$$
-
-where $\|h_i\|$ is the mean residual stream norm at layer $i$. $\alpha_i = 1$ means the perturbation has the magnitude of a typical activation at that layer.
+$$\alpha = \frac{|c|}{\|h_i\|}$$
 
 ## Setup
 
@@ -37,37 +39,29 @@ where $\|h_i\|$ is the mean residual stream norm at layer $i$. $\alpha_i = 1$ me
 
 ## Results
 
-:::chart scatter /experiments/emotion_set/analysis/scaling_law/coherence_chart.json "Coherence vs $\\alpha$ across 9,545 runs. Each light dot is one (trait, layer, coef); dark line is the median per bin; dashed line marks the coherence floor. The median crosses 70 between $\\alpha = 0.8$ and $1.0$." height=400:::
+:::chart scatter /experiments/emotion_set/analysis/scaling_law/coherence_chart.json "Coherence vs $\\alpha$ across 9,545 runs. Each light dot is one (trait, layer, coef); dark line is the per-bin median with a 95% bootstrap CI; dashed line marks the coherence floor. The median crosses 70 between $\\alpha = 0.8$ and $1.0$." height=400:::
 
-:::chart scatter /experiments/emotion_set/analysis/scaling_law/delta_chart.json "Absolute trait delta $|$steered $-$ baseline$|$ vs $\\alpha$. 21% of runs have negative deltas (steering against the trait); the law is about perturbation magnitude, not signed direction. Bins above $\\alpha = 1.2$ had $n<50$ and were dropped." height=400:::
+:::chart scatter /experiments/emotion_set/analysis/scaling_law/delta_chart.json "Absolute trait delta climbs monotonically with $\\alpha$, from a median of ~13 at $\\alpha = 0.5$ to ~53 at $\\alpha = 1.1$. The faster-than-linear rise is what makes the cliff a worthwhile tradeoff in the sweet spot." height=400:::
 
 :::chart line /experiments/emotion_set/analysis/scaling_law/cliff_by_depth_chart.json "Per-layer cliff: for each (trait, layer) we interpolate the $\\alpha$ at which coherence first crosses 70, then plot median + 25–75th percentile band across traits. Median sits near $\\alpha = 0.9$ across most layers; per-trait variance is ±20–30%." height=400:::
-
-| $\alpha$ | n | Median coherence | Median $|\Delta|$ | % coherent ($\geq 70$) |
-|-----------|---|------------------|----------------|------------------|
-| 0.40-0.60 | 2,371 | 85.8 | 13.4 | **96.7** |
-| 0.60-0.80 | 3,662 | 83.3 | 28.1 | 88.5 |
-| 0.80-1.00 | 2,084 | 75.6 | 43.7 | 61.2 |
-| 1.00-1.20 | 1,334 | 65.3 | 52.6 | 38.8 |
 
 ## Takeaways
 
 1. **Cliff is at $\alpha \approx 1.0$**, not at any particular raw coefficient.
 2. **Sweet spot $\alpha \in [0.6, 0.8]$**: 88% coherent, median $|\Delta| = 28$.
-3. **Pick the coefficient from $\alpha$**: $c = \alpha \cdot \|h_i\|$.
-4. **The cliff replicates** a Gemma-2-2B refusal-only observation, generalizing across model and trait.
+3. **Pick the coefficient from $\alpha$**: $c = \pm \alpha \cdot \|h_i\|$, sign depending on which direction you want to steer.
 
 ## Limitations &amp; future directions
 
-- **One model.** Qwen2.5-14B-Instruct only. Refusal on Gemma-2-2B is the only cross-model corroboration, and it's a different setup. Whether the same $\alpha$ threshold holds on Llama 3.x, Gemma 3, or Qwen 3 is open.
+- **One model.** Qwen2.5-14B-Instruct only. Whether the same $\alpha$ threshold holds on Llama 3.x, Gemma 3, or Qwen 3 is open.
 - **Residual stream only.** Not tested on $\text{attn\_contribution}$, $\text{mlp\_contribution}$, $v_\text{proj}$, $k_\text{proj}$. Each component has its own activation-norm scale, and the cliff location in $\alpha$ may shift.
 - **Unit-norm contrastive vectors only.** Both $\text{mean\_diff}$ and $\text{probe}$ unit-normalize at extraction, which is why the formula simplifies to $|c|/\|h_i\|$. SAE feature directions, raw $\text{mean\_diff}$ without normalization, multi-vector ensembles, or non-linear directions may not follow the same law.
 - **Single position.** All vectors extracted at \consolas{response[:5]}. Other positions are untested.
-- **Activation norms borrowed.** Norms come from a different experiment on the same model (\consolas{mats-emergent-misalignment}), not recomputed on the emotion-set prompt distribution. Assumed representative but not verified.
-- **Coefficient-search bias.** Our search algorithm targets $\alpha$ near the cliff, so bins outside roughly $[0.4, 1.2]$ are sparse. Tail behavior beyond $\alpha = 1.2$ ($n<50$ in our bins) was dropped from the headline tables.
-- **Coherence judge noise.** Scoring uses gpt-4.1-mini; the \consolas{llm-judge-optimization} finding shows cross-judge absolute Spearman is only 0.11, so the 70 floor is judge-specific. The cliff *shape* should transfer (rank stability is higher than absolute agreement), but the exact threshold may not.
-- **21% of runs steer against the trait** (negative $\Delta$). The $|\Delta|$ axis treats those as equivalent perturbations, which is the scaling-law framing but loses the sign distinction.
-- **Hypothesis: cliff location depends on alignment with the natural activation manifold.** At the same $\alpha$ some runs collapse and others don't, and 21% have negative $\Delta$ (trait vector anti-aligned with where the activation already points). A perturbation that lives in directions the model already uses should be less disruptive than one pushing into "unused" directions. Test: for runs that break coherence, find the generation token where output first becomes incoherent and measure $\cos(v, h_t)$ between the trait vector and the unsteered residual at that token. Predict: collapse-tokens have lower cosine with $v$ (more perpendicular). If true, the practical $\alpha$ ceiling could be replaced by a per-trait alignment-aware threshold.
+- **Activation norms borrowed.** Norms come from a different experiment on the same model (\consolas{mats-emergent-misalignment}), not recomputed on the emotion-set prompt distribution. Every $\alpha$ in this finding scales by an unknown constant; the cliff *shape* is robust to that constant but its absolute location is not.
+- **Coefficient-search bias.** Our search algorithm explores $\alpha \in [0.4, 1.2]$ densely, then brackets past the cliff at $\alpha \in [1.45, 1.55]$. The 1.2-1.4 gap is a search artifact, not absence of cliff data; the orphan cluster beyond 1.4 is small-$n$ ($<50$ per bin) and is dropped from headline tables.
+- **Coherence judge.** gpt-4.1-mini, single judge. The 70 floor is judge-specific.
+- **21% of runs steer against the trait** (negative $\Delta$). The $|\Delta|$ axis treats those as equivalent perturbations.
+- **Activation-manifold alignment.** A run-level proxy (split by $\Delta$ sign within matched $\alpha$ bins) shows no coherence difference: median coherence is within $\pm 1$ point between pos-$\Delta$ and neg-$\Delta$ runs in every bin. The per-token version is the interesting open test: for runs that collapse, does the specific token where coherence breaks have lower $\cos(v, h_t)$ than the surrounding tokens? Untested.
 
 ## Reproducing
 

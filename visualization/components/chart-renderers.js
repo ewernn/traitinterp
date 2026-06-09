@@ -856,14 +856,29 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
         });
     }
 
-    // Optional overlaid line (e.g., per-bin medians)
+    // Optional overlaid line (e.g., per-bin medians, with optional CI band)
     if (data.binned_median_line) {
         const bml = data.binned_median_line;
+        const lineColor = s.lineColor || '#1f3a8a';
+        // CI band: lower bound (invisible), upper bound filled to lower
+        if (bml.ci_lower && bml.ci_upper && bml.ci_lower.length === bml.x.length) {
+            traces.push({
+                x: bml.x, y: bml.ci_lower,
+                mode: 'lines', type: 'scatter', line: { width: 0 },
+                showlegend: false, hoverinfo: 'skip',
+            });
+            traces.push({
+                x: bml.x, y: bml.ci_upper,
+                mode: 'lines', type: 'scatter', line: { width: 0 },
+                fill: 'tonexty', fillcolor: 'rgba(31, 58, 138, 0.18)',
+                name: '95% CI', showlegend: true, hoverinfo: 'skip',
+            });
+        }
         traces.push({
             x: bml.x, y: bml.y,
             mode: 'lines+markers', type: 'scatter',
-            line: { color: s.lineColor || '#1f3a8a', width: 2.5 },
-            marker: { color: s.lineColor || '#1f3a8a', size: 7 },
+            line: { color: lineColor, width: 2.5 },
+            marker: { color: lineColor, size: 7 },
             name: bml.name || 'Median per bin', showlegend: true, hoverinfo: 'x+y',
         });
     }

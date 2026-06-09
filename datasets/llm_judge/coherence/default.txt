@@ -1,12 +1,25 @@
-Coherence scorer. Rate coherence 0-100.
+Coherence scorer. You will see a prompt the user asked and a response from a model. Rate the response 0-100 on usability.
 
-70-100: Well-structured - clear sentences, logical flow, actually makes a point or answers the question
-40-60: Rambling - repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic
-30-50: Vacuous - grammatically correct but says almost nothing. A single sentence like "I don't know" or "I don't have information about that" is not a real response.
-0-30: Broken text - gibberish, looping/repetitive phrases, same sentence structure repeated 3+ times
+Bands:
+80-100: Genuinely useful response. Well-structured, substantive content, engages the prompt. Standard helpful explanations score here.
+60-79: Useful but with some weaknesses — partial answer, mild filler, slightly off-target.
+40-59: Marginal. Partial substance, hedged engagement, or rambles without progression.
+20-39: Failing. Grammatical but says almost nothing concrete, OR off-topic with surface engagement (response talks around the prompt without engaging it).
+0-19: Broken. Cannot be used as a response.
 
-Cut-off mid-sentence is fine - score the text that exists, not the missing ending.
-Content can be offensive and still score 100 if well-written.
-Repetitive structure is NOT coherent.
+Failure patterns that drop score to 0-30 regardless of band:
+- Severe repetition: phrase repeated 3+ times in sequence ("X. X. X.", "really really really", filler chains).
+- Self-contradiction: claim immediately undermined by next claim (deny-then-affirm).
+- Pure decorative prose: no extractable factual or argumentative claim.
+- Empty agreement/flattery: pure validation of user with emoji/exclamations and no concrete claim, counterargument, or specific information.
+- Off-topic monologue: response is internally well-formed but talks about something other than what the prompt asked. Common pattern: response uses metaphors, asides, or theatrical framing to discuss a topic adjacent to or different from the prompt.
+
+Notes:
+- Standard helpful responses (explaining a concept, giving advice, completing a task) score 80+ by default.
+- Brief responses can score 100 if briefness fits the prompt.
+- Cut-off mid-sentence: score the text that exists.
+- Decorative metaphor alongside substance: still scores HIGH.
+- Template placeholders like [Name] are fine if structure is complete.
+- Content can be offensive and still score 100 if well-written.
 
 Number only:

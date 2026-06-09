@@ -396,6 +396,7 @@ body {
     padding: var(--space-md);
     overflow: hidden;
     height: 100vh;
+    height: 100dvh; /* Safari/iOS: track the visible viewport, not the toolbar-inclusive 100vh */
 }
 
 /* Scrollbar styling */
@@ -422,6 +423,7 @@ body {
     display: flex;
     gap: 0;
     height: 100vh;
+    height: 100dvh;
     overflow: auto;
 }
 
@@ -1103,6 +1105,7 @@ code {
     font-weight: var(--fw-light);
     line-height: 1.7;
     color: var(--text-primary);
+    overflow-wrap: break-word; /* long URLs/tokens wrap instead of overflowing the viewport */
 }
 
 .prose h1 {
@@ -1174,6 +1177,7 @@ code {
     padding: 20px;
     margin: 24px 0;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     font-size: var(--text-base);
     line-height: 1.5;
 }
@@ -2351,12 +2355,14 @@ mark.annotation.annotation-unknown {
         overflow-y: auto;
         height: auto;
         min-height: 100vh;
+        min-height: 100dvh;
     }
 
     .container {
         flex-direction: column;
         height: auto;
         min-height: 100vh;
+        min-height: 100dvh;
         width: 100%;
         overflow-x: hidden;
     }
@@ -3230,6 +3236,7 @@ mark.annotation.annotation-unknown {
     padding: 16px 24px 24px 24px;
     background: var(--bg-secondary);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     counter-reset: figure;
 }
 
@@ -3333,6 +3340,34 @@ mark.annotation.annotation-unknown {
 }
 @media (max-width: 768px) {
     .sbs-container { flex-direction: column; }
+
+    /* ── Findings & Overview on phones (Safari/iOS) ──
+       Reclaim horizontal space so cards, abstracts, and the fixed-width
+       thumbnail don't overflow a ~375px viewport (which makes Safari
+       shrink the whole page) or crush the text into a narrow column. */
+    .findings-container { padding: var(--space-md) var(--space-sm); }
+
+    .finding-content { padding: var(--space-md) var(--space-md-sm) var(--space-md-sm); }
+
+    /* Desktop indents the abstract 48px each side — far too wide for a phone. */
+    .finding-content .prose h1 + p,
+    .finding-content .prose h1 + p + p,
+    .finding-content .prose h1 + p + p + p {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Stack the 150px thumbnail under the title instead of squeezing it
+       beside the text in a too-narrow flex row. */
+    .finding-card.has-thumbnail .finding-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+    .thumbnail-chart { align-self: flex-start; }
+
+    /* Single-finding (deep-link) view: trim the 2rem frame. */
+    .standalone-finding { padding: var(--space-md) var(--space-sm); }
 }
 
 /* Smaller prose for findings */

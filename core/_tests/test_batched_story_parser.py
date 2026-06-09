@@ -216,6 +216,92 @@ class TestAdjacentDelimiters:
 
 
 # =============================================================================
+# Implicit-first-block recovery
+# =============================================================================
+# The paper's neutral_dialogue.txt and two_speaker_dialogue.txt templates
+# demonstrate the Format with `[dialogue 2]` after the first unlabeled example,
+# so models sometimes emit `[dialogue 2] ... [dialogue 3] ...` and put the
+# first dialogue's text BEFORE the first marker. parse_numbered_blocks now
+# promotes that pre-first-marker text to block 1.
+# Empirically validated on captured Llama 3.3 70B int4 responses (May 2026).
+
+class TestImplicitFirstBlockRecovery:
+    def test_min_index_2_promotes_preamble_to_block_1(self):
+        from utils.extraction import parse_numbered_blocks
+        response = (
+            "Person: First dialogue line.\n"
+            "AI: First response.\n\n"
+            "[dialogue 2]\n"
+            "Person: Second dialogue line.\n"
+            "AI: Second response.\n\n"
+            "[dialogue 3]\n"
+            "Person: Third dialogue line.\n"
+            "AI: Third response."
+        )
+        out = parse_numbered_blocks(response, expected_n=3, label="dialogue")
+        assert len(out) == 3, f"got {len(out)} blocks, expected 3"
+        assert "First dialogue line" in out[0]
+        assert "Second dialogue line" in out[1]
+        assert "Third dialogue line" in out[2]
+
+    def test_min_index_1_no_promotion(self):
+        """If the model emits [dialogue 1] explicitly, don't promote anything
+        — even if there's pre-marker preamble like "Here are the dialogues:"
+        Current code captures the preamble as part of [dialogue 1]'s content
+        because that's how the existing parser works for well-formed input."""
+        from utils.extraction import parse_numbered_blocks
+        response = (
+            "Here are the dialogues:\n\n"
+            "[dialogue 1] First.\n\n[dialogue 2] Second."
+        )
+        out = parse_numbered_blocks(response, expected_n=2, label="dialogue")
+        assert len(out) == 2
+        # The pre-marker preamble is NOT in block 0 (it would've been if min
+        # were >=2). With min=1, no promotion happens.
+        assert "Here are the dialogues" not in out[0]
+
+    def test_min_index_3_still_promotes(self):
+        """The fix triggers on `min >= 2`, so [dialogue 3, 4] also promotes
+        pre-marker text. The model occasionally skips two openers."""
+        from utils.extraction import parse_numbered_blocks
+        response = (
+            "Person: implicit first.\nAI: first reply.\n\n"
+            "[dialogue 3] Person: explicit third.\nAI: third reply."
+        )
+        out = parse_numbered_blocks(response, expected_n=2, label="dialogue")
+        assert len(out) == 2
+        assert "implicit first" in out[0]
+        assert "explicit third" in out[1]
+
+    def test_only_whitespace_preamble_not_promoted(self):
+        from utils.extraction import parse_numbered_blocks
+        response = "\n\n  \n[dialogue 2] Only this counts."
+        out = parse_numbered_blocks(response, expected_n=1, label="dialogue")
+        # Whitespace-only preamble doesn't survive .strip() → not promoted.
+        # We get the post-delimiter content of [dialogue 2] as the sole block
+        # (parser strips the delimiter itself from the block content).
+        assert out == ["Only this counts."]
+
+    def test_expected_n_cap_with_implicit_first(self):
+        """If expected_n=1 and model emits text + [dialogue 2], we return just
+        the implicit-first block — don't keep going."""
+        from utils.extraction import parse_numbered_blocks
+        response = "First dialogue.\n\n[dialogue 2] Second dialogue."
+        out = parse_numbered_blocks(response, expected_n=1, label="dialogue")
+        assert out == ["First dialogue."]
+
+    def test_story_label_unchanged_behavior(self):
+        """The fix is generic across labels; story template explicitly shows
+        [story 1], [story 2], [story 3] so model emits all three; no implicit
+        promotion needed and behavior should be unchanged (parser strips the
+        delimiter itself from block content as it has since v1)."""
+        from utils.extraction import parse_numbered_blocks
+        response = "[story 1] A.\n[story 2] B.\n[story 3] C."
+        out = parse_numbered_blocks(response, expected_n=3, label="story")
+        assert out == ["A.", "B.", "C."]
+
+
+# =============================================================================
 # _generate_stories_batched_and_write (Increment 3 integration helper)
 # =============================================================================
 
