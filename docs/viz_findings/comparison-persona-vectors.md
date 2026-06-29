@@ -29,7 +29,7 @@ hallucination: experiments/viz_findings/persona_vectors_replication/extraction/p
 :::
 
 :::extraction-data "Natural extraction data (Llama-3.1-8B base)" tokens=5
-evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil/base/responses
+evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses
 sycophancy: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses
 hallucination: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses
 :::
@@ -56,7 +56,7 @@ Best steering delta (trait score increase over baseline, coherence ≥ 70):
 *Baseline column shows PV Instruction / Natural unsteered trait scores.*
 
 :::steered-responses "Steered Responses"
-evil: "Evil" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/evil/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
+evil: "Evil" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/evil_v3/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
 sycophancy: "Sycophancy" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/sycophancy/instruct/response_all/steering/responses/residual/mean_diff/L10_c5.3_2026-01-28_07-25-31.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/sycophancy/instruct/response__10/steering/responses/residual/mean_diff/L13_c7.2_2026-02-03_07-23-07.json
 hallucination: "Hallucination" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L14_c5.0_2026-01-28_07-27-33.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/hallucination/instruct/response__10/steering/responses/residual/probe/L14_c7.2_2026-01-28_07-33-59.json
 :::

@@ -40,30 +40,31 @@ if command -v rclone >/dev/null 2>&1; then
     # Make sure rclone is configured for R2 (ensure_r2 is idempotent)
     bash -c "source dev/r2_config.sh && ensure_r2" 2>&1 | sed 's/^/[r2-setup] /'
 
-    echo "[startup] Kicking off per-experiment R2 pulls in background..."
-    EXPS="starter ant_emotion_concepts rm_syco viz_findings mats-emergent-misalignment mats-mental-state-circuits judge_optimization quant-sensitivity aria_rl"
     (
-        for exp in $EXPS; do
-            (
-                rclone copy "r2:trait-interp-bucket/experiments/$exp/" "experiments/$exp/" \
-                    --ignore-existing \
-                    --transfers 16 \
-                    --checkers 32 \
-                    --stats 30s \
-                    --exclude "activations/**" --exclude "**/activations/**" \
-                    --exclude "**/inference/*/raw/**" \
-                    --exclude "*.bin" --exclude "*.pth" \
-                    --exclude "finetune/**" --exclude "**/finetune/**" \
-                    --exclude "*_trajectories.pt" \
-                    --exclude "**/em_probe/**/data*.pt" \
-                    --exclude "**/inference/*/projections/**/*.json" \
-                    2>&1 | sed "s|^|[r2-pull:$exp] |"
-            ) &
-        done
-        wait
-        echo "[r2-pull] All experiments synced"
+        # 3a. Light pull: only the data files viz findings actually render from,
+        #     driven by config/railway_findings.yaml (a few MB total, not GB).
+        #     dev/check_railway_manifest.py validates that whitelist against the
+        #     finding markdown — run it in CI / before release, not here.
+        bash dev/r2_pull_railway.sh 2>&1 | sed 's/^/[r2-pull:findings] /'
+
+        # 3b. Live Chat needs the `starter` experiment (vectors + config for the
+        #     chat backend) — it's not a finding, so it isn't in the manifest.
+        #     Scoped, exclude-filtered pull (mirrors r2_config.sh's regenerable
+        #     excludes); tolerant of failure (chat degrades, site stays up).
+        rclone copy "r2:trait-interp-bucket/experiments/starter/" "experiments/starter/" \
+            --ignore-existing --transfers 16 --checkers 32 --stats 30s \
+            --exclude "activations/**" --exclude "**/activations/**" \
+            --exclude "**/inference/*/raw/**" \
+            --exclude "*.bin" --exclude "*.pth" \
+            --exclude "finetune/**" --exclude "**/finetune/**" \
+            --exclude "*_trajectories.pt" \
+            --exclude "**/em_probe/**/data*.pt" \
+            --exclude "**/inference/*/projections/**/*.json" \
+            2>&1 | sed "s|^|[r2-pull:starter] |"
+
+        echo "[r2-pull] Finding data + starter synced"
     ) &
-    echo "[startup] R2 pulls pid=$! (fanning out ${EXPS})"
+    echo "[startup] R2 pulls pid=$! (findings light-pull + starter)"
 fi
 
 # 4. Start the server (foreground — replaces this shell)

@@ -7,6 +7,11 @@
 #   ./utils/promote_to_prod.sh -m "commit msg" --push   # also push to origin/prod
 #   ./utils/promote_to_prod.sh --dry-run                # show what would be synced
 #   ./utils/promote_to_prod.sh --diff                   # show diff between dev and prod
+#   ./utils/promote_to_prod.sh --no-verify              # skip the Railway finding-data manifest check
+#
+# Pre-promote check (hard gate): dev/check_railway_manifest.py — every finding's data files
+# must be listed in config/railway_findings.yaml so prod's light R2 pull fetches them
+# (otherwise the finding renders blank on the live site).
 #
 # Must be run from the repo root while on the dev branch.
 # Deployment files (Procfile, railway.toml, etc.) live on prod and are preserved.
@@ -19,12 +24,14 @@ INCLUDE_FILE="$REPO_ROOT/.prodinclude"
 TARGET_BRANCH="prod"
 COMMIT_MSG=""
 AUTO_PUSH=false
+NO_VERIFY=false
 
 # Parse flags
 for arg in "$@"; do
     case "$arg" in
         -m) ;; # next arg is the message, handled below
         --push) AUTO_PUSH=true ;;
+        --no-verify) NO_VERIFY=true ;;
         --dry-run|--diff) ;; # handled in case below
         *)
             if [[ "${PREV_ARG:-}" == "-m" ]]; then
@@ -70,6 +77,23 @@ expand_paths() {
     done | sort -u
 }
 
+# ── Pre-promote check: every finding's data files must be in the Railway manifest ──
+# (else prod's light R2 pull misses them and the finding renders blank).
+run_railway_check() {
+    echo "── Railway finding-data manifest check ──"
+    if [[ -f "$REPO_ROOT/dev/check_railway_manifest.py" ]]; then
+        if ! python3 "$REPO_ROOT/dev/check_railway_manifest.py"; then
+            echo ""
+            echo "Railway manifest check FAILED — a finding references data not in config/railway_findings.yaml,"
+            echo "so prod would render it blank. Fix with: python dev/check_railway_manifest.py --regenerate"
+            exit 1
+        fi
+    else
+        echo "  check_railway_manifest.py not found, skipping"
+    fi
+    echo ""
+}
+
 # ── Modes ──
 
 MODE="promote"
@@ -105,6 +129,8 @@ case "$MODE" in
             echo "Error: uncommitted changes on dev. Commit or stash first."
             exit 1
         fi
+
+        [[ "$NO_VERIFY" != true ]] && run_railway_check
 
         FILES=$(get_paths | expand_paths)
         FILE_COUNT=$(echo "$FILES" | wc -l | xargs)

@@ -1,0 +1,190 @@
+# Railway light-download manifest — per-finding data file whitelist.
+#
+# Maps each viz finding slug -> the exact data files its :::blocks load.
+# Regenerate with: python dev/check_railway_manifest.py --regenerate
+# Validate with:   python dev/check_railway_manifest.py
+#
+# 'required' files must exist or the finding renders blank/errors on prod.
+# 'optional' files (annotations / token_offsets) are tolerated-missing.
+#
+# dev/r2_pull_railway.sh pulls the experiments/* entries here from R2.
+# docs/viz_findings/assets/* entries are git-tracked and ship via .prodinclude
+# (listed here only so this stays the single source of truth for coverage).
+findings:
+  1st-vs-3rd-person:
+    required:
+      - docs/viz_findings/assets/1st-vs-3rd-person-graph.png
+  assistant-axis-replication:
+    required: []
+  coefficient-scaling-law:
+    required:
+      - datasets/llm_judge/coherence/default.txt
+      - experiments/emotion_set/analysis/scaling_law/cliff_by_depth_chart.json
+      - experiments/emotion_set/analysis/scaling_law/coherence_chart.json
+      - experiments/emotion_set/analysis/scaling_law/delta_chart.json
+      - experiments/emotion_set/steering/emotion_set/jealousy/qwen_14b_instruct/response__5/steering/responses/baseline.json
+      - experiments/emotion_set/steering/emotion_set/jealousy/qwen_14b_instruct/response__5/steering/responses/residual/probe/L24_c71.6_2026-03-04_04-36-28.json
+    optional:
+      - experiments/emotion_set/steering/emotion_set/jealousy/qwen_14b_instruct/response__5/steering/responses/baseline_annotations.json
+      - experiments/emotion_set/steering/emotion_set/jealousy/qwen_14b_instruct/response__5/steering/responses/residual/probe/L24_c71.6_2026-03-04_04-36-28_annotations.json
+  comparison-arditi-refusal:
+    required:
+      - experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/positive/responses/residual/mean_diff/L12_c-123.4_2026-01-28_09-38-19.json
+      - experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/baseline.json
+      - experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/residual/probe/L12_c-142.7_2026-01-28_09-35-56.json
+    optional:
+      - experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/positive/responses/residual/mean_diff/L12_c-123.4_2026-01-28_09-38-19_annotations.json
+      - experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/baseline_annotations.json
+      - experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/residual/probe/L12_c-142.7_2026-01-28_09-35-56_annotations.json
+  comparison-persona-vectors:
+    required:
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses/metadata.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses/neg.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses/pos.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L14_c5.0_2026-01-28_07-27-33.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/sycophancy/instruct/response_all/steering/responses/residual/mean_diff/L10_c5.3_2026-01-28_07-25-31.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_natural/evil_v3/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_natural/hallucination/instruct/response__10/steering/responses/residual/probe/L14_c7.2_2026-01-28_07-33-59.json
+      - experiments/viz_findings/persona_vectors_replication/steering/pv_natural/sycophancy/instruct/response__10/steering/responses/residual/mean_diff/L13_c7.2_2026-02-03_07-23-07.json
+    optional:
+      - experiments/viz_findings/config.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses/token_offsets.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses/token_offsets.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses/token_offsets.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses/token_offsets.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses/token_offsets.json
+      - experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses/token_offsets.json
+  component-decomposition:
+    required:
+      - docs/viz_findings/assets/component-bar-qwen-optimism.json
+      - docs/viz_findings/assets/component-steering-qwen-optimism.json
+  convolution-detector:
+    required: []
+  effect-size-vs-steering:
+    required: []
+  emotion-concepts-replication:
+    required:
+      - experiments/ant_emotion_concepts/paper_figures/fig10.png
+      - experiments/ant_emotion_concepts/paper_figures/fig11.png
+      - experiments/ant_emotion_concepts/paper_figures/fig12.png
+      - experiments/ant_emotion_concepts/paper_figures/fig13.png
+      - experiments/ant_emotion_concepts/paper_figures/fig14.png
+      - experiments/ant_emotion_concepts/paper_figures/fig15.png
+      - experiments/ant_emotion_concepts/paper_figures/fig2.png
+      - experiments/ant_emotion_concepts/paper_figures/fig3.png
+      - experiments/ant_emotion_concepts/paper_figures/fig36.png
+      - experiments/ant_emotion_concepts/paper_figures/fig37.png
+      - experiments/ant_emotion_concepts/paper_figures/fig38.png
+      - experiments/ant_emotion_concepts/paper_figures/fig39.png
+      - experiments/ant_emotion_concepts/paper_figures/fig5.png
+      - experiments/ant_emotion_concepts/paper_figures/fig57.png
+      - experiments/ant_emotion_concepts/paper_figures/fig6.png
+      - experiments/ant_emotion_concepts/paper_figures/fig7.png
+      - experiments/ant_emotion_concepts/paper_figures/fig8.png
+      - experiments/ant_emotion_concepts/paper_figures/fig9.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig10_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig11_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig12_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig13_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig14_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig15_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig2_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig36_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig37_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig38_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig39_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig3_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig57_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig5_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig6_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig7_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig8_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/fig9_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/ours/table1_ours.png
+      - experiments/ant_emotion_concepts/paper_figures/table1.png
+  liars-bench-deception:
+    required: []
+  llm-judge-optimization:
+    required:
+      - docs/viz_findings/assets/judge_optimization/example_aa_persona.json
+      - docs/viz_findings/assets/judge_optimization/example_gg_offtopic.json
+      - docs/viz_findings/assets/judge_optimization/example_sycophancy_flattery.json
+      - docs/viz_findings/assets/judge_optimization/headline_lift.json
+      - docs/viz_findings/assets/judge_optimization/per_dim_lift.json
+      - docs/viz_findings/assets/judge_optimization/per_trait_lift.json
+    optional:
+      - docs/viz_findings/assets/judge_optimization/example_aa_persona_annotations.json
+      - docs/viz_findings/assets/judge_optimization/example_gg_offtopic_annotations.json
+      - docs/viz_findings/assets/judge_optimization/example_sycophancy_flattery_annotations.json
+  massive-activations:
+    required: []
+  mats-behavioral-probes:
+    required:
+      - docs/viz_findings/assets/mats-behavioral-probes/01_raw_vs_zscored_heatmap.png
+      - docs/viz_findings/assets/mats-behavioral-probes/02_pca_scatter.png
+      - docs/viz_findings/assets/mats-behavioral-probes/03_top_traits_grouped_bar.png
+      - docs/viz_findings/assets/mats-behavioral-probes/04_per_eval_stability.png
+      - docs/viz_findings/assets/mats-behavioral-probes/05_alignment_vs_emotion.png
+      - docs/viz_findings/assets/mats-behavioral-probes/06_rank32_slow_position.png
+      - docs/viz_findings/assets/mats-behavioral-probes/07_model_vs_text_dominated.png
+      - docs/viz_findings/assets/mats-behavioral-probes/08_loo_robustness.png
+      - docs/viz_findings/assets/mats-behavioral-probes/09_onset_top_traits.png
+      - docs/viz_findings/assets/mats-behavioral-probes/10_onset_trait_grid.png
+      - docs/viz_findings/assets/mats-behavioral-probes/11_onset_shift_bar.png
+      - docs/viz_findings/assets/mats-behavioral-probes/12_checkpoint_evolution.png
+      - docs/viz_findings/assets/mats-behavioral-probes/13_cohens_d.png
+      - docs/viz_findings/assets/mats-behavioral-probes/16_convolution_detector.png
+      - docs/viz_findings/assets/mats-behavioral-probes/17_roc_curve.png
+      - docs/viz_findings/assets/mats-behavioral-probes/18_cross_model_transfer.png
+      - docs/viz_findings/assets/mats-behavioral-probes/19_variant_landscape.png
+      - docs/viz_findings/assets/mats-behavioral-probes/20_inoculation_gradient.png
+      - docs/viz_findings/assets/mats-behavioral-probes/21_arousal_onset.png
+  prefill-dynamics:
+    required:
+      - experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json
+      - experiments/viz_findings/prefill-dynamics/analysis/perplexity.json
+      - experiments/viz_findings/prefill-dynamics/analysis/position_breakdown.json
+      - experiments/viz_findings/prefill-dynamics/analysis/projection_stability-chirp_refusal.json
+      - experiments/viz_findings/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json
+  quantization-sensitivity:
+    required:
+      - docs/viz_findings/assets/quantization-sensitivity-cosine-perlayer-caa.png
+      - docs/viz_findings/assets/quantization-sensitivity-steering-combined.png
+  rm-sycophancy:
+    required:
+      - datasets/traits/rm_hack/biases.json
+      - experiments/rm_syco/extraction/rm_hack/secondary_objective/base/responses/metadata.json
+      - experiments/rm_syco/extraction/rm_hack/secondary_objective/base/responses/neg.json
+      - experiments/rm_syco/extraction/rm_hack/secondary_objective/base/responses/pos.json
+      - experiments/rm_syco/extraction/rm_hack/ulterior_motive/base/responses/metadata.json
+      - experiments/rm_syco/extraction/rm_hack/ulterior_motive/base/responses/neg.json
+      - experiments/rm_syco/extraction/rm_hack/ulterior_motive/base/responses/pos.json
+      - experiments/rm_syco/model_diff/instruct_vs_rm_lora/rm_syco/train_100/results.json
+      - experiments/rm_syco/steering/rm_hack/secondary_objective/rm_lora/response__5/rm_syco/train_100/responses/baseline.json
+      - experiments/rm_syco/steering/rm_hack/secondary_objective/rm_lora/response__5/rm_syco/train_100/responses/baseline_annotations.json
+      - experiments/rm_syco/steering/rm_hack/secondary_objective/rm_lora/response__5/rm_syco/train_100/responses/residual/probe/L30_c-8.0_2026-01-17_13-04-24.json
+      - experiments/rm_syco/steering/rm_hack/ulterior_motive/rm_lora/response__5/rm_syco/train_100/responses/residual/probe/L25_c-10.0_2026-01-23_05-39-08.json
+      - experiments/rm_syco/steering/rm_hack/ulterior_motive/rm_lora/response__5/rm_syco/train_100/responses/residual/probe/L25_c-10.0_2026-01-23_05-39-08_annotations.json
+    optional:
+      - experiments/rm_syco/config.json
+      - experiments/rm_syco/extraction/rm_hack/secondary_objective/base/responses/token_offsets.json
+      - experiments/rm_syco/extraction/rm_hack/ulterior_motive/base/responses/token_offsets.json
+      - experiments/rm_syco/steering/rm_hack/secondary_objective/rm_lora/response__5/rm_syco/train_100/responses/residual/probe/L30_c-8.0_2026-01-17_13-04-24_annotations.json
+  thought-branches-analysis:
+    required: []

@@ -20,6 +20,7 @@ visualization/
 # ── Config ──
 config/paths.yaml
 config/models/
+config/railway_findings.yaml   # per-finding data whitelist for the light R2 pull
 
 # ── Datasets ──
 datasets/traits/starter_traits/
@@ -72,8 +73,10 @@ experiments/.gitkeep
 # ── Steering ──
 steering/
 
-# ── R2 sync tooling (Railway pulls paper_figures at deploy time) ──
+# ── R2 sync tooling (Railway pulls finding data at deploy time) ──
 dev/r2_pull.sh
+dev/r2_pull_railway.sh   # light pull: only files viz findings render from
 dev/r2_config.sh
 dev/setup_r2.sh
 dev/railway_start.sh
+dev/check_railway_manifest.py
