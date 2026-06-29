@@ -136,6 +136,24 @@ acl = private
 EOF
 chown -R dev:dev /home/dev/.config/rclone
 
+# Torch-CUDA self-check (invoked after deps install in step 4.5). The default torch wheel
+# in requirements can be newer than the host driver supports (e.g. cu130 on a 535 driver),
+# which leaves torch.cuda.is_available()==False; pin a CUDA-12 build if so.
+cat > /home/dev/check_torch.sh << 'CHK'
+#!/bin/bash
+cd ~/traitinterp && . .venv/bin/activate 2>/dev/null
+python - <<'PY'
+import torch, subprocess
+if torch.cuda.is_available():
+    print("  torch CUDA OK:", torch.__version__)
+else:
+    print("  torch CUDA FALSE for", torch.__version__, "- host driver too old; pinning torch==2.5.1+cu124")
+    subprocess.run(["uv","pip","install","torch==2.5.1+cu124","--index-url","https://download.pytorch.org/whl/cu124"])
+    print("  retry cuda:", __import__("torch").cuda.is_available())
+PY
+CHK
+chown dev:dev /home/dev/check_torch.sh && chmod +x /home/dev/check_torch.sh
+
 echo "Remote provisioning done."
 REMOTEEOF
 
